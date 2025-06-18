@@ -54,7 +54,6 @@ def load_html_threaded():
     threading.Thread(target=load_html_from_url).start()
 
 # Load HTML code from a file
-
 def load_html_from_file():
     global loaded_html_code
     filepath = filedialog.askopenfilename(filetypes=[("HTML-Dateien", "*.html;*.htm"), ("Alle Dateien", "*.*")])
