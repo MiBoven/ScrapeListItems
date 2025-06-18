@@ -1,17 +1,27 @@
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
-from tkinter import messagebox, filedialog
+from tkinter import filedialog
 import threading
+import datetime
 
 # Global variable to store loaded HTML code
 loaded_html_code = ""
+
+def log_action(action, status, extra=""):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    log_entry = f"[{timestamp}] {action} - {status}"
+    if extra:
+        log_entry += f" | {extra}"
+    with open("log.txt", "a", encoding="utf-8") as log_file:
+        log_file.write(log_entry + "\n")
 
 def load_html_from_url():
     global loaded_html_code
     url = url_entry.get().strip()
     if not url:
-        messagebox.showwarning("Fehler", "Bitte eine URL eingeben.")
+        status_label.config(text="Bitte eine URL eingeben.", fg="red")
+        log_action("HTML laden", "Fehler", "Keine URL angegeben")
         return
     try:
         button_load_html.config(state="disabled")
@@ -27,9 +37,13 @@ def load_html_from_url():
         response.raise_for_status()
         loaded_html_code = response.text
         status_label.config(text="HTML erfolgreich geladen", fg="green")
+        log_action("HTML laden", "Erfolg", f"URL: {url}")
+    except requests.exceptions.HTTPError as e:
+        status_label.config(text=f"HTTP Fehler: {e.response.status_code}", fg="red")
+        log_action("HTML laden", "HTTP Fehler", f"Status {e.response.status_code}: {e}")
     except Exception as e:
         status_label.config(text="Fehler beim Laden", fg="red")
-        messagebox.showerror("Fehler beim Abrufen", str(e))
+        log_action("HTML laden", "Fehler", f"{type(e).__name__}: {e}")
     finally:
         button_load_html.config(state="normal")
 
@@ -38,7 +52,8 @@ def load_html_threaded():
 
 def show_html_popup():
     if not loaded_html_code:
-        messagebox.showinfo("Hinweis", "Kein HTML im Speicher. Erst laden.")
+        status_label.config(text="Kein HTML im Speicher", fg="red")
+        log_action("HTML anzeigen", "Fehler", "Kein HTML im Speicher")
         return
 
     html_window = tk.Toplevel(root)
@@ -53,6 +68,7 @@ def show_html_popup():
     text_widget.pack(expand=True, fill="both")
 
     scrollbar.config(command=text_widget.yview)
+    log_action("HTML anzeigen", "Erfolg")
 
 def toggle_manual_mode():
     if manual_mode_var.get():
@@ -70,19 +86,15 @@ def extract_texts():
     identifier = identifier_entry.get().strip()
 
     if not identifier:
-        messagebox.showwarning("Fehler", f"Bitte einen {search_type}-Wert angeben.")
+        status_label.config(text="Kein Wert für Suche angegeben", fg="red")
+        log_action("Extraktion", "Fehler", f"{search_type} leer")
         return []
 
-    if manual_mode_var.get():
-        html = html_text.get("1.0", tk.END).strip()
-        if not html:
-            messagebox.showwarning("Fehler", "Kein HTML im Textfeld.")
-            return []
-    else:
-        html = loaded_html_code.strip()
-        if not html:
-            messagebox.showwarning("Fehler", "Kein HTML im Speicher.")
-            return []
+    html = html_text.get("1.0", tk.END).strip() if manual_mode_var.get() else loaded_html_code.strip()
+    if not html:
+        status_label.config(text="Kein HTML vorhanden", fg="red")
+        log_action("Extraktion", "Fehler", "Kein HTML vorhanden")
+        return []
 
     soup = BeautifulSoup(html, "html.parser")
 
@@ -92,12 +104,13 @@ def extract_texts():
     else:
         elements = soup.find_all(search_tag, id=identifier)
 
+    log_action("Extraktion", "Erfolg", f"Tag: {tag}, {search_type}: {identifier}, Treffer: {len(elements)}")
     return [el.get_text(strip=True) for el in elements]
 
 def scrape_and_save():
     texts = extract_texts()
     if not texts:
-        messagebox.showinfo("Ergebnis", "Keine passenden Elemente gefunden.")
+        status_label.config(text="Keine passenden Elemente gefunden", fg="orange")
         return
 
     filepath = filedialog.asksaveasfilename(
@@ -106,14 +119,17 @@ def scrape_and_save():
         title="Speichern unter..."
     )
     if not filepath:
+        status_label.config(text="Speichern abgebrochen", fg="orange")
         return
 
     try:
         with open(filepath, "w", encoding="utf-8") as f:
             f.write("\n".join(texts))
-        messagebox.showinfo("Erfolg", f"{len(texts)} Einträge gespeichert in:\n{filepath}")
+        status_label.config(text=f"{len(texts)} Elemente gespeichert", fg="green")
+        log_action("Speichern", "Erfolg", f"Datei: {filepath}")
     except Exception as e:
-        messagebox.showerror("Fehler beim Speichern", str(e))
+        status_label.config(text="Fehler beim Speichern", fg="red")
+        log_action("Speichern", "Fehler", f"{type(e).__name__}: {e}")
 
 def scrape_and_show():
     texts = extract_texts()
@@ -125,12 +141,12 @@ def scrape_and_show():
         textfield_output.insert(tk.END, "Keine passenden Elemente gefunden.")
     textfield_output.config(state="disabled")
     label_output.config(text=f"Ausgabe ({len(texts)} Elemente)")
+    log_action("Anzeigen", "Erfolg", f"{len(texts)} Elemente angezeigt")
 
 # GUI Setup
 root = tk.Tk()
 root.title("HTML Item Extractor")
 
-# URL column with buttons
 url_frame = tk.Frame(root)
 url_frame.pack(pady=5, anchor="w")
 
@@ -143,15 +159,12 @@ button_load_html.pack(side="left", padx=5)
 
 tk.Button(url_frame, text="HTML anzeigen", command=show_html_popup).pack(side="left")
 
-# Status label (new)
 status_label = tk.Label(url_frame, text="", fg="green")
 status_label.pack(side="left", padx=10)
 
-# Manual mode checkbox
 manual_mode_var = tk.BooleanVar(value=False)
 tk.Checkbutton(root, text="HTML manuell eingeben", variable=manual_mode_var, command=toggle_manual_mode).pack(anchor="w")
 
-# HTML code input area
 tk.Label(root, text="HTML-Code (optional manuell bearbeitbar):").pack(anchor="w")
 html_frame = tk.Frame(root)
 html_frame.pack()
@@ -163,7 +176,6 @@ html_text.pack(side="left", fill="both", expand=True)
 html_scrollbar.config(command=html_text.yview)
 html_text.config(state="disabled")
 
-# Options for scraping
 options_frame = tk.Frame(root)
 options_frame.pack(pady=5)
 
@@ -175,17 +187,15 @@ tk.Label(options_frame, text="Suche nach:").grid(row=0, column=2, sticky="w")
 search_type_var = tk.StringVar(value="class")
 tk.OptionMenu(options_frame, search_type_var, "class", "id").grid(row=0, column=3, padx=10)
 
-tk.Label(options_frame, text="Wert (z. B. CSS-Klassen oder ID):").grid(row=1, column=0, sticky="w", pady=5)
+tk.Label(options_frame, text="Wert (z.\u202fB. CSS-Klassen oder ID):").grid(row=1, column=0, sticky="w", pady=5)
 identifier_entry = tk.Entry(options_frame, width=60)
 identifier_entry.grid(row=1, column=1, columnspan=3, pady=5)
 
-# Action buttons
 button_frame = tk.Frame(root)
 button_frame.pack(pady=10)
 tk.Button(button_frame, text="Speichern", command=scrape_and_save).pack(side="left", padx=5)
 tk.Button(button_frame, text="Anzeigen", command=scrape_and_show).pack(side="left", padx=5)
 
-# Output area
 label_output = tk.Label(root, text="Ausgabe (0 Elemente)")
 label_output.pack(anchor="w")
 
@@ -198,5 +208,4 @@ textfield_output = tk.Text(output_frame, height=15, width=90, state="disabled", 
 textfield_output.pack(side="left", fill="both", expand=True)
 output_scrollbar.config(command=textfield_output.yview)
 
-# Start GUI
 root.mainloop()
