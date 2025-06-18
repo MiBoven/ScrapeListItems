@@ -3,13 +3,19 @@ from bs4 import BeautifulSoup
 import tkinter as tk
 from tkinter import messagebox, filedialog
 
-def lade_html_von_url():
+def load_html_from_url():
     url = url_entry.get().strip()
     if not url:
         messagebox.showwarning("Fehler", "Bitte eine URL eingeben.")
         return
     try:
-        response = requests.get(url)
+        # Set a user-agent to avoid being blocked by some websites
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3"
+            )
+        }
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         html_text.config(state="normal")
         html_text.delete("1.0", tk.END)
@@ -85,7 +91,7 @@ url_frame.pack(pady=5, anchor="w")
 tk.Label(url_frame, text="Webseite URL:").pack(side="left")
 url_entry = tk.Entry(url_frame, width=60)
 url_entry.pack(side="left", padx=5)
-tk.Button(url_frame, text="HTML laden", command=lade_html_von_url).pack(side="left")
+tk.Button(url_frame, text="HTML laden", command=load_html_from_url).pack(side="left")
 
 # HTML-Code mit Scrollbar
 tk.Label(root, text="HTML-Code (manuell oder automatisch geladen):").pack(anchor="w")
