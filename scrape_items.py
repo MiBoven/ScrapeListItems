@@ -49,77 +49,73 @@ def load_html_from_url():
     finally:
         button_load_html.config(state="normal")
 
-# Function to load HTML code from a URL in a separate thread (to avoid blocking the GUI and is faster)
+# Load HTML code from a URL in a separate thread
 def load_html_threaded():
     threading.Thread(target=load_html_from_url).start()
 
-# Function to show the loaded HTML code in a popup window
+# Load HTML code from a file
+
+def load_html_from_file():
+    global loaded_html_code
+    filepath = filedialog.askopenfilename(filetypes=[("HTML-Dateien", "*.html;*.htm"), ("Alle Dateien", "*.*")])
+    if not filepath:
+        return
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            loaded_html_code = f.read()
+        status_label.config(text=f"HTML-Datei geladen: {filepath}", fg="green")
+        log_action("HTML Datei", "Erfolg", f"Datei: {filepath}, Länge: {len(loaded_html_code)}")
+    except Exception as e:
+        status_label.config(text="Fehler beim Laden der Datei", fg="red")
+        log_action("HTML Datei", "Fehler", f"{type(e).__name__}: {e}")
+
+# Show the loaded HTML code in a popup window
 def show_html_popup():
     if not loaded_html_code:
         status_label.config(text="Kein HTML im Speicher", fg="red")
         log_action("HTML anzeigen", "Fehler", "Kein HTML im Speicher")
         return
-
     html_window = tk.Toplevel(root)
     html_window.title("Geladener HTML-Code")
-
     scrollbar = tk.Scrollbar(html_window)
     scrollbar.pack(side="right", fill="y")
-
     text_widget = tk.Text(html_window, wrap="none", yscrollcommand=scrollbar.set)
     text_widget.insert("1.0", loaded_html_code)
     text_widget.config(state="disabled")
     text_widget.pack(expand=True, fill="both")
-
     scrollbar.config(command=text_widget.yview)
     log_action("HTML anzeigen", "Erfolg")
 
-# Function to toggle manual mode for HTML input
-def toggle_manual_mode():
-    if manual_mode_var.get():
-        html_text.config(state="normal")
-        html_text.delete("1.0", tk.END)
-        html_text.insert("1.0", "<!-- Hier eigenen HTML-Code einfügen -->")
-    else:
-        html_text.delete("1.0", tk.END)
-        html_text.config(state="disabled")
-
-# Function to extract texts based on user input
+# Extract texts based on user input
 def extract_texts():
     tag = tag_var.get()
     search_tag = True if tag == "*" else tag
     search_type = search_type_var.get()
     identifier = identifier_entry.get().strip()
-
     if not identifier:
         status_label.config(text="Kein Wert für Suche angegeben", fg="red")
         log_action("Extraktion", "Fehler", f"{search_type} leer")
         return []
-
-    html = html_text.get("1.0", tk.END).strip() if manual_mode_var.get() else loaded_html_code.strip()
+    html = loaded_html_code.strip()
     if not html:
         status_label.config(text="Kein HTML vorhanden", fg="red")
         log_action("Extraktion", "Fehler", "Kein HTML vorhanden")
         return []
-
     soup = BeautifulSoup(html, "html.parser")
-
     if search_type == "class":
         classes = identifier.split()
         elements = soup.find_all(search_tag, class_=lambda value: value and all(c in value for c in classes))
     else:
         elements = soup.find_all(search_tag, id=identifier)
-
     log_action("Extraktion", "Erfolg", f"Tag: {tag}, {search_type}: {identifier}, Treffer: {len(elements)}")
     return [el.get_text(strip=True) for el in elements]
 
-# Function to scrape and save the extracted texts to a file 
+# Save the extracted texts to a file
 def scrape_and_save():
     texts = extract_texts()
     if not texts:
         status_label.config(text="Keine passenden Elemente gefunden", fg="orange")
         return
-
     filepath = filedialog.asksaveasfilename(
         defaultextension=".txt",
         filetypes=[("Textdateien", "*.txt"), ("Alle Dateien", "*.*")],
@@ -128,7 +124,6 @@ def scrape_and_save():
     if not filepath:
         status_label.config(text="Speichern abgebrochen", fg="orange")
         return
-
     try:
         with open(filepath, "w", encoding="utf-8") as f:
             f.write("\n".join(texts))
@@ -138,7 +133,7 @@ def scrape_and_save():
         status_label.config(text="Fehler beim Speichern", fg="red")
         log_action("Speichern", "Fehler", f"{type(e).__name__}: {e}")
 
-# Scrape and display the extracted texts
+# Show the extracted texts in the output area
 def scrape_and_show():
     texts = extract_texts()
     textfield_output.config(state="normal")
@@ -167,23 +162,10 @@ button_load_html = tk.Button(url_frame, text="HTML laden", command=load_html_thr
 button_load_html.pack(side="left", padx=5)
 
 tk.Button(url_frame, text="HTML anzeigen", command=show_html_popup).pack(side="left")
+tk.Button(url_frame, text="HTML-Datei laden", command=load_html_from_file).pack(side="left", padx=5)
 
 status_label = tk.Label(url_frame, text="", fg="green")
 status_label.pack(side="left", padx=10)
-
-manual_mode_var = tk.BooleanVar(value=False)
-tk.Checkbutton(root, text="HTML manuell eingeben", variable=manual_mode_var, command=toggle_manual_mode).pack(anchor="w")
-
-tk.Label(root, text="HTML-Code (optional manuell bearbeitbar):").pack(anchor="w")
-html_frame = tk.Frame(root)
-html_frame.pack()
-html_scrollbar = tk.Scrollbar(html_frame)
-html_scrollbar.pack(side="right", fill="y")
-
-html_text = tk.Text(html_frame, height=12, width=90, yscrollcommand=html_scrollbar.set)
-html_text.pack(side="left", fill="both", expand=True)
-html_scrollbar.config(command=html_text.yview)
-html_text.config(state="disabled")
 
 options_frame = tk.Frame(root)
 options_frame.pack(pady=5)
