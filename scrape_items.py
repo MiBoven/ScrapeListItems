@@ -26,7 +26,7 @@ def load_html_from_url():
         log_action("HTML laden", "Fehler", "Keine URL angegeben")
         return
     try:
-        button_load_html.config(state="disabled")
+        load_html_button.config(state="disabled")
         status_label.config(text="Lade HTML...", fg="blue")
         headers = {
             "User-Agent": (
@@ -47,7 +47,7 @@ def load_html_from_url():
         status_label.config(text="Fehler beim Laden", fg="red")
         log_action("HTML laden", "Fehler", f"{type(e).__name__}: {e}")
     finally:
-        button_load_html.config(state="normal")
+        load_html_button.config(state="normal")
 
 # Load HTML code from a URL in a separate thread
 def load_html_threaded():
@@ -150,45 +150,56 @@ root = tk.Tk()
 root.iconphoto(False, tk.PhotoImage(file="icon.png"))
 root.title("HTML Item Extractor")
 
+# Create URL input frame
 url_frame = tk.Frame(root)
 url_frame.pack(pady=5, anchor="w")
 
-tk.Label(url_frame, text="Webseite URL:").pack(side="left")
+web_url_label = tk.Label(url_frame, text="Webseite URL:").pack(side="left")
 url_entry = tk.Entry(url_frame, width=60)
 url_entry.pack(side="left", padx=5)
 
-button_load_html = tk.Button(url_frame, text="HTML laden", command=load_html_threaded)
-button_load_html.pack(side="left", padx=5)
+load_html_button = tk.Button(url_frame, text="HTML laden", command=load_html_threaded)
+load_html_button.pack(side="left", padx=5)
 
-tk.Button(url_frame, text="HTML anzeigen", command=show_html_popup).pack(side="left")
-tk.Button(url_frame, text="HTML-Datei laden", command=load_html_from_file).pack(side="left", padx=5)
+show_html_button = tk.Button(url_frame, text="HTML anzeigen", command=show_html_popup)
+show_html_button.pack(side="left")
+load_html_file_button = tk.Button(url_frame, text="HTML-Datei laden", command=load_html_from_file)
+load_html_file_button.pack(side="left", padx=5)
 
-status_label = tk.Label(url_frame, text="", fg="green")
-status_label.pack(side="left", padx=10)
-
+# Create options frame for scraping
 options_frame = tk.Frame(root)
 options_frame.pack(pady=5)
 
-tk.Label(options_frame, text="HTML-Tag:").grid(row=0, column=0, sticky="w")
+html_tag_label =  tk.Label(options_frame, text="HTML-Tag:")
+html_tag_label.grid(row=0, column=0, sticky="w")
 tag_var = tk.StringVar(value="*")
-tk.OptionMenu(options_frame, tag_var, "*", "span", "div").grid(row=0, column=1, padx=10)
+tag_menu = tk.OptionMenu(options_frame, tag_var, "*", "span", "div")
+tag_menu.grid(row=0, column=1, padx=10)
 
-tk.Label(options_frame, text="Suche nach:").grid(row=0, column=2, sticky="w")
+search_label = tk.Label(options_frame, text="Suche nach:")
+search_label.grid(row=0, column=2, sticky="w")
 search_type_var = tk.StringVar(value="class")
-tk.OptionMenu(options_frame, search_type_var, "class", "id").grid(row=0, column=3, padx=10)
+search_type_menu = tk.OptionMenu(options_frame, search_type_var, "class", "id")
+search_type_menu.grid(row=0, column=3, padx=10)
 
-tk.Label(options_frame, text="Wert (z.\u202fB. CSS-Klassen oder ID):").grid(row=1, column=0, sticky="w", pady=5)
+search_value_label = tk.Label(options_frame, text="Wert (z.\u202fB. CSS-Klassen oder ID):")
+search_value_label.grid(row=1, column=0, sticky="w", pady=5)
 identifier_entry = tk.Entry(options_frame, width=60)
 identifier_entry.grid(row=1, column=1, columnspan=3, pady=5)
 
+# Create buttons frame for saving and showing results
 button_frame = tk.Frame(root)
 button_frame.pack(pady=10)
-tk.Button(button_frame, text="Speichern", command=scrape_and_save).pack(side="left", padx=5)
-tk.Button(button_frame, text="Anzeigen", command=scrape_and_show).pack(side="left", padx=5)
+
+save_result_button = tk.Button(button_frame, text="Speichern", command=scrape_and_save)
+save_result_button.pack(side="left", padx=5)
+show_result_button = tk.Button(button_frame, text="Anzeigen", command=scrape_and_show)
+show_result_button.pack(side="left", padx=5)
 
 label_output = tk.Label(root, text="Ausgabe (0 Elemente)")
 label_output.pack(anchor="w")
 
+# Create output frame with text area and scrollbar
 output_frame = tk.Frame(root)
 output_frame.pack()
 output_scrollbar = tk.Scrollbar(output_frame)
@@ -197,5 +208,12 @@ output_scrollbar.pack(side="right", fill="y")
 textfield_output = tk.Text(output_frame, height=15, width=90, state="disabled", bg="#f0f0f0", yscrollcommand=output_scrollbar.set)
 textfield_output.pack(side="left", fill="both", expand=True)
 output_scrollbar.config(command=textfield_output.yview)
+
+# Create status frame
+status_frame = tk.Frame(root) 
+status_frame.pack(pady=5, anchor="w")
+
+status_label = tk.Label(status_frame , text="", fg="green")
+status_label.pack(side="left", padx=10)
 
 root.mainloop()
