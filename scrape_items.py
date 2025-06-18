@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog
 
 def lade_html_von_url():
     url = url_entry.get().strip()
@@ -46,9 +46,21 @@ def scrape_and_save():
     if not texte:
         messagebox.showinfo("Ergebnis", "Keine passenden Elemente gefunden.")
         return
-    with open("ausgabe.txt", "w", encoding="utf-8") as f:
-        f.write("\n".join(texte))
-    messagebox.showinfo("Erfolg", f"{len(texte)} Einträge in 'ausgabe.txt' gespeichert.")
+
+    filepath = filedialog.asksaveasfilename(
+        defaultextension=".txt",
+        filetypes=[("Textdateien", "*.txt"), ("Alle Dateien", "*.*")],
+        title="Speichern unter..."
+    )
+    if not filepath:
+        return  # Benutzer hat abgebrochen
+
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            f.write("\n".join(texte))
+        messagebox.showinfo("Erfolg", f"{len(texte)} Einträge gespeichert in:\n{filepath}")
+    except Exception as e:
+        messagebox.showerror("Fehler beim Speichern", str(e))
 
 def scrape_and_show():
     texte = extract_texts()
@@ -59,6 +71,8 @@ def scrape_and_show():
     else:
         ausgabe_field.insert(tk.END, "Keine passenden Elemente gefunden.")
     ausgabe_field.config(state="disabled")
+
+    ausgabe_label.config(text=f"Ausgabe ({len(texte)} Elemente)")
 
 # GUI Setup
 root = tk.Tk()
@@ -71,7 +85,7 @@ url_frame.pack(pady=5, anchor="w")
 tk.Label(url_frame, text="Webseite URL:").pack(side="left")
 url_entry = tk.Entry(url_frame, width=60)
 url_entry.pack(side="left", padx=5)
-tk.Button(url_frame, text="HTML anzeigen", command=lade_html_von_url).pack(side="left")
+tk.Button(url_frame, text="HTML laden", command=lade_html_von_url).pack(side="left")
 
 # HTML-Code mit Scrollbar
 tk.Label(root, text="HTML-Code (manuell oder automatisch geladen):").pack(anchor="w")
@@ -88,19 +102,16 @@ html_scrollbar.config(command=html_text.yview)
 options_frame = tk.Frame(root)
 options_frame.pack(pady=5)
 
-# HTML-Tag Dropdown
 tk.Label(options_frame, text="HTML-Tag:").grid(row=0, column=0, sticky="w")
 tag_var = tk.StringVar(value="span")
 tag_menu = tk.OptionMenu(options_frame, tag_var, "span", "div")
 tag_menu.grid(row=0, column=1, padx=10)
 
-# Suchtyp Dropdown
 tk.Label(options_frame, text="Suche nach:").grid(row=0, column=2, sticky="w")
 search_type_var = tk.StringVar(value="class")
 search_type_menu = tk.OptionMenu(options_frame, search_type_var, "class", "id")
 search_type_menu.grid(row=0, column=3, padx=10)
 
-# Klassen- oder ID-Wert
 tk.Label(options_frame, text="Wert (z. B. CSS-Klassen oder ID):").grid(row=1, column=0, sticky="w", pady=5)
 identifier_entry = tk.Entry(options_frame, width=60)
 identifier_entry.grid(row=1, column=1, columnspan=3, pady=5)
@@ -111,8 +122,10 @@ button_frame.pack(pady=10)
 tk.Button(button_frame, text="Speichern", command=scrape_and_save).pack(side="left", padx=5)
 tk.Button(button_frame, text="Anzeigen", command=scrape_and_show).pack(side="left", padx=5)
 
-# Ausgabe mit Scrollbar
-tk.Label(root, text="Ausgabe:").pack(anchor="w")
+# Ausgabe mit Label und Scrollbar
+ausgabe_label = tk.Label(root, text="Ausgabe (0 Elemente)")
+ausgabe_label.pack(anchor="w")
+
 output_frame = tk.Frame(root)
 output_frame.pack()
 output_scrollbar = tk.Scrollbar(output_frame)
@@ -122,5 +135,4 @@ ausgabe_field = tk.Text(output_frame, height=15, width=90, state="disabled", bg=
 ausgabe_field.pack(side="left", fill="both", expand=True)
 output_scrollbar.config(command=ausgabe_field.yview)
 
-# Start GUI
 root.mainloop()
