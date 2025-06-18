@@ -8,6 +8,7 @@ import datetime
 # Global variable to store loaded HTML code
 loaded_html_code = ""
 
+# Function to log actions with timestamps
 def log_action(action, status, extra=""):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     log_entry = f"[{timestamp}] {action} - {status}"
