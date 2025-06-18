@@ -15,6 +15,7 @@ def load_html_from_url():
         return
     try:
         button_load_html.config(state="disabled")
+        status_label.config(text="Lade HTML...", fg="blue")
         headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -25,8 +26,9 @@ def load_html_from_url():
         response = requests.get(url, headers=headers)
         response.raise_for_status()
         loaded_html_code = response.text
-        messagebox.showinfo("Erfolg", "HTML wurde erfolgreich geladen.")
+        status_label.config(text="HTML erfolgreich geladen", fg="green")
     except Exception as e:
+        status_label.config(text="Fehler beim Laden", fg="red")
         messagebox.showerror("Fehler beim Abrufen", str(e))
     finally:
         button_load_html.config(state="normal")
@@ -34,7 +36,6 @@ def load_html_from_url():
 def load_html_threaded():
     threading.Thread(target=load_html_from_url).start()
 
-# Function to show loaded HTML code in a popup window
 def show_html_popup():
     if not loaded_html_code:
         messagebox.showinfo("Hinweis", "Kein HTML im Speicher. Erst laden.")
@@ -53,7 +54,6 @@ def show_html_popup():
 
     scrollbar.config(command=text_widget.yview)
 
-# Function to toggle manual mode for HTML input
 def toggle_manual_mode():
     if manual_mode_var.get():
         html_text.config(state="normal")
@@ -63,10 +63,8 @@ def toggle_manual_mode():
         html_text.delete("1.0", tk.END)
         html_text.config(state="disabled")
 
-# Function to extract texts based on user input
 def extract_texts():
     tag = tag_var.get()
-    # Check if tag is a wildcard or specific tag
     search_tag = True if tag == "*" else tag
     search_type = search_type_var.get()
     identifier = identifier_entry.get().strip()
@@ -144,6 +142,10 @@ button_load_html = tk.Button(url_frame, text="HTML laden", command=load_html_thr
 button_load_html.pack(side="left", padx=5)
 
 tk.Button(url_frame, text="HTML anzeigen", command=show_html_popup).pack(side="left")
+
+# Status label (new)
+status_label = tk.Label(url_frame, text="", fg="green")
+status_label.pack(side="left", padx=10)
 
 # Manual mode checkbox
 manual_mode_var = tk.BooleanVar(value=False)
