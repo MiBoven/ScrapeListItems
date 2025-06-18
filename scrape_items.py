@@ -34,18 +34,40 @@ def load_html_from_url():
 def load_html_threaded():
     threading.Thread(target=load_html_from_url).start()
 
-def show_html():
-    global loaded_html_code
+# Function to show loaded HTML code in a popup window
+def show_html_popup():
     if not loaded_html_code:
         messagebox.showinfo("Hinweis", "Kein HTML im Speicher. Erst laden.")
         return
-    html_text.config(state="normal")
-    html_text.delete("1.0", tk.END)
-    html_text.insert("1.0", loaded_html_code)
-    html_text.config(state="disabled")
 
+    html_window = tk.Toplevel(root)
+    html_window.title("Geladener HTML-Code")
+
+    scrollbar = tk.Scrollbar(html_window)
+    scrollbar.pack(side="right", fill="y")
+
+    text_widget = tk.Text(html_window, wrap="none", yscrollcommand=scrollbar.set)
+    text_widget.insert("1.0", loaded_html_code)
+    text_widget.config(state="disabled")
+    text_widget.pack(expand=True, fill="both")
+
+    scrollbar.config(command=text_widget.yview)
+
+# Function to toggle manual mode for HTML input
+def toggle_manual_mode():
+    if manual_mode_var.get():
+        html_text.config(state="normal")
+        html_text.delete("1.0", tk.END)
+        html_text.insert("1.0", "<!-- Hier eigenen HTML-Code einfügen -->")
+    else:
+        html_text.delete("1.0", tk.END)
+        html_text.config(state="disabled")
+
+# Function to extract texts based on user input
 def extract_texts():
     tag = tag_var.get()
+    # Check if tag is a wildcard or specific tag
+    search_tag = True if tag == "*" else tag
     search_type = search_type_var.get()
     identifier = identifier_entry.get().strip()
 
@@ -53,18 +75,24 @@ def extract_texts():
         messagebox.showwarning("Fehler", f"Bitte einen {search_type}-Wert angeben.")
         return []
 
-    html = loaded_html_code.strip()
-    if not html:
-        messagebox.showwarning("Fehler", "Kein HTML-Code im Speicher.")
-        return []
+    if manual_mode_var.get():
+        html = html_text.get("1.0", tk.END).strip()
+        if not html:
+            messagebox.showwarning("Fehler", "Kein HTML im Textfeld.")
+            return []
+    else:
+        html = loaded_html_code.strip()
+        if not html:
+            messagebox.showwarning("Fehler", "Kein HTML im Speicher.")
+            return []
 
     soup = BeautifulSoup(html, "html.parser")
 
     if search_type == "class":
         classes = identifier.split()
-        elements = soup.find_all(tag, class_=lambda value: value and all(c in value for c in classes))
+        elements = soup.find_all(search_tag, class_=lambda value: value and all(c in value for c in classes))
     else:
-        elements = soup.find_all(tag, id=identifier)
+        elements = soup.find_all(search_tag, id=identifier)
 
     return [el.get_text(strip=True) for el in elements]
 
@@ -115,10 +143,14 @@ url_entry.pack(side="left", padx=5)
 button_load_html = tk.Button(url_frame, text="HTML laden", command=load_html_threaded)
 button_load_html.pack(side="left", padx=5)
 
-tk.Button(url_frame, text="HTML anzeigen", command=show_html).pack(side="left")
+tk.Button(url_frame, text="HTML anzeigen", command=show_html_popup).pack(side="left")
 
-# HTML code display area
-tk.Label(root, text="HTML-Code (manuell oder über Button anzeigen):").pack(anchor="w")
+# Manual mode checkbox
+manual_mode_var = tk.BooleanVar(value=False)
+tk.Checkbutton(root, text="HTML manuell eingeben", variable=manual_mode_var, command=toggle_manual_mode).pack(anchor="w")
+
+# HTML code input area
+tk.Label(root, text="HTML-Code (optional manuell bearbeitbar):").pack(anchor="w")
 html_frame = tk.Frame(root)
 html_frame.pack()
 html_scrollbar = tk.Scrollbar(html_frame)
@@ -134,8 +166,8 @@ options_frame = tk.Frame(root)
 options_frame.pack(pady=5)
 
 tk.Label(options_frame, text="HTML-Tag:").grid(row=0, column=0, sticky="w")
-tag_var = tk.StringVar(value="span")
-tk.OptionMenu(options_frame, tag_var, "span", "div").grid(row=0, column=1, padx=10)
+tag_var = tk.StringVar(value="*")
+tk.OptionMenu(options_frame, tag_var, "*", "span", "div").grid(row=0, column=1, padx=10)
 
 tk.Label(options_frame, text="Suche nach:").grid(row=0, column=2, sticky="w")
 search_type_var = tk.StringVar(value="class")
@@ -145,7 +177,7 @@ tk.Label(options_frame, text="Wert (z. B. CSS-Klassen oder ID):").grid(row=1, 
 identifier_entry = tk.Entry(options_frame, width=60)
 identifier_entry.grid(row=1, column=1, columnspan=3, pady=5)
 
-# Buttons
+# Action buttons
 button_frame = tk.Frame(root)
 button_frame.pack(pady=10)
 tk.Button(button_frame, text="Speichern", command=scrape_and_save).pack(side="left", padx=5)
