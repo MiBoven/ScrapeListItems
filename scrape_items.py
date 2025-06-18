@@ -16,6 +16,7 @@ def log_action(action, status, extra=""):
     with open("log.txt", "a", encoding="utf-8") as log_file:
         log_file.write(log_entry + "\n")
 
+# Function to load HTML code from a URL
 def load_html_from_url():
     global loaded_html_code
     url = url_entry.get().strip()
@@ -47,9 +48,11 @@ def load_html_from_url():
     finally:
         button_load_html.config(state="normal")
 
+# Function to load HTML code from a URL in a separate thread (to avoid blocking the GUI and is faster)
 def load_html_threaded():
     threading.Thread(target=load_html_from_url).start()
 
+# Function to show the loaded HTML code in a popup window
 def show_html_popup():
     if not loaded_html_code:
         status_label.config(text="Kein HTML im Speicher", fg="red")
@@ -70,6 +73,7 @@ def show_html_popup():
     scrollbar.config(command=text_widget.yview)
     log_action("HTML anzeigen", "Erfolg")
 
+# Function to toggle manual mode for HTML input
 def toggle_manual_mode():
     if manual_mode_var.get():
         html_text.config(state="normal")
@@ -79,6 +83,7 @@ def toggle_manual_mode():
         html_text.delete("1.0", tk.END)
         html_text.config(state="disabled")
 
+# Function to extract texts based on user input
 def extract_texts():
     tag = tag_var.get()
     search_tag = True if tag == "*" else tag
@@ -107,6 +112,7 @@ def extract_texts():
     log_action("Extraktion", "Erfolg", f"Tag: {tag}, {search_type}: {identifier}, Treffer: {len(elements)}")
     return [el.get_text(strip=True) for el in elements]
 
+# Function to scrape and save the extracted texts to a file 
 def scrape_and_save():
     texts = extract_texts()
     if not texts:
@@ -131,6 +137,7 @@ def scrape_and_save():
         status_label.config(text="Fehler beim Speichern", fg="red")
         log_action("Speichern", "Fehler", f"{type(e).__name__}: {e}")
 
+# Scrape and display the extracted texts
 def scrape_and_show():
     texts = extract_texts()
     textfield_output.config(state="normal")
@@ -145,6 +152,7 @@ def scrape_and_show():
 
 # GUI Setup
 root = tk.Tk()
+root.iconphoto(False, tk.PhotoImage(file="icon.png"))
 root.title("HTML Item Extractor")
 
 url_frame = tk.Frame(root)
